@@ -1,6 +1,6 @@
 {
-	"name": "markin",
-	"description": "A simple markdown editor",
+	"name": "",
+	"description": "",
 	"version": "0.0.1",
 	"private": true,
 	"main": "src/electron.js",
@@ -14,6 +14,7 @@
 		"build": "vite build",
 		"build:win": "cross-env NODE_ENV=production vite build --mode win && electron-builder -w --config build.config.json",
 		"build:mac": "cross-env NODE_ENV=production vite build --mode mac && electron-builder -m --config build.config.json",
+		"build:linux": "cross-env NODE_ENV=production vite build --mode linux && electron-builder -l --config build.config.json",
 		"build:all": "npm run build:win && npm run build:mac",
 		"preview": "vite preview",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
