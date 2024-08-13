@@ -1,8 +1,9 @@
 import windowStateManager from 'electron-window-state';
 import { app, BrowserWindow, ipcMain } from 'electron';
 import contextMenu from 'electron-context-menu';
-import serve from 'electron-serve';
 import path from 'path';
+import { initialize, enable } from '@electron/remote/main';
+initialize();
 
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -14,118 +15,119 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 
 if (process.env.NODE_ENV === 'development') {
-  try {
-    require('electron-reloader')(module, {});
-  } catch (_) {}
+ try {
+  require('electron-reloader')(module, {});
+	} catch {
+  console.log('Error: electron-reloaded not found');
+ }
 }
 
-const serveURL = serve({ directory: '.' });
 const port = process.env.PORT || 5173;
 const dev = !app.isPackaged;
 let mainWindow;
 
 function createWindow() {
-	let windowState = windowStateManager({
-		defaultWidth: 800,
-		defaultHeight: 600,
-	});
+ let windowState = windowStateManager({
+  defaultWidth: 800,
+  defaultHeight: 600,
+ });
 
-	const mainWindow = new BrowserWindow({
-		backgroundColor: 'whitesmoke',
-		titleBarStyle: 'hidden',
-		autoHideMenuBar: true,
-		trafficLightPosition: {
-			x: 17,
-			y: 32,
-		},
-		minHeight: 450,
-		minWidth: 500,
-		webPreferences: {
-			enableRemoteModule: true,
-			contextIsolation: true,
-			nodeIntegration: true,
-			spellcheck: false,
-			devTools: dev,
-			preload: path.join(__dirname, 'preload.cjs'),
-		},
-		x: windowState.x,
-		y: windowState.y,
-		width: windowState.width,
-		height: windowState.height,
-	});
+ const mainWindow = new BrowserWindow({
+  backgroundColor: 'whitesmoke',
+  titleBarStyle: 'hidden',
+  autoHideMenuBar: true,
+  trafficLightPosition: {
+   x: 17,
+   y: 32,
+  },
+  minHeight: 450,
+  minWidth: 500,
+  webPreferences: {
+   enableRemoteModule: true,
+   contextIsolation: true,
+   nodeIntegration: true,
+   spellcheck: false,
+   devTools: dev,
+   preload: path.join(__dirname, 'preload.cjs'),
+  },
+  x: windowState.x,
+  y: windowState.y,
+  width: windowState.width,
+  height: windowState.height,
+ });
 
-	windowState.manage(mainWindow);
+ enable(mainWindow.webContents);
 
-	mainWindow.once('ready-to-show', () => {
-		mainWindow.show();
-		mainWindow.focus();
-	});
+ windowState.manage(mainWindow);
 
-	mainWindow.on('close', () => {
-		windowState.saveState(mainWindow);
-	});
+ mainWindow.once('ready-to-show', () => {
+  mainWindow.show();
+  mainWindow.focus();
+ });
 
-	return mainWindow;
+ mainWindow.on('close', () => {
+  windowState.saveState(mainWindow);
+ });
+
+ return mainWindow;
 }
 
 contextMenu({
-	showLookUpSelection: false,
-	showSearchWithGoogle: false,
-	showCopyImage: false,
-	prepend: (defaultActions, params, browserWindow) => [
-		{
-			label: 'Make App 💻',
-		},
-	],
+ showLookUpSelection: false,
+ showSearchWithGoogle: false,
+ showCopyImage: false,
+ prepend: () => [
+  {
+   label: 'Make App 💻',
+  },
+ ],
 });
 
 function loadVite(port) {
-	mainWindow.loadURL(`http://localhost:${port}`).catch((e) => {
-		console.log('Error loading URL, retrying', e);
-		setTimeout(() => {
-			loadVite(port);
-		}, 200);
-	});
+ mainWindow.loadURL(`http://localhost:${port}`).catch((e) => {
+  console.log('Error loading URL, retrying', e);
+  setTimeout(() => {
+   loadVite(port);
+  }, 200);
+ });
 }
 
 function createMainWindow() {
-	mainWindow = createWindow();
-	mainWindow.once('close', () => {
-		mainWindow = null;
-	});
+ mainWindow = createWindow();
+ mainWindow.once('close', () => {
+  mainWindow = null;
+ });
 
-	if (dev) loadVite(port);
-	else serveURL(mainWindow);
+ if (dev) loadVite(port);
 }
 
 app.once('ready', () => {
-	createMainWindow();
+ createMainWindow();
 });
 app.on('activate', () => {
-	if (!mainWindow) {
-		createMainWindow();
-	}
+ if (!mainWindow) {
+  createMainWindow();
+ }
 });
 app.on('window-all-closed', () => {
-	if (process.platform !== 'darwin') app.quit();
+ if (process.platform !== 'darwin') app.quit();
 });
 
 ipcMain.on('to-main', (event, count) => {
-	return mainWindow.webContents.send('from-main', `next count is ${count + 1}`);
+ return mainWindow.webContents.send('from-main', `next count is ${count + 1}`);
 });
-
 
 // window
 ipcMain.on('window-close', () => {
-	mainWindow.close();
+ mainWindow.close();
 });
 ipcMain.on('window-minimize', () => {
-	mainWindow.minimize();
+ mainWindow.minimize();
 });
 ipcMain.on('window-maximize', () => {
-	if (mainWindow.isMaximized()) {
-		mainWindow.unmaximize();
-	} else {
-		mainWindow.maximize();
-	}
+ if (mainWindow.isMaximized()) {
+  mainWindow.unmaximize();
+ } else {
+  mainWindow.maximize();
+ }
 });
